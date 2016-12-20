@@ -630,40 +630,403 @@ Prune test error rate 0.2592593 is slightly higher than unpruned trees error rat
 
 
 \newpage
+{\bf Problem 4} (Chapter 8 Exercises 10):\\
+We now use boosting to predict Salary in the Hitters data set.\\
+
+\begin{program}
+	\begin{verbatim}
+	> library(ISLR)
+	> summary(Hitters)
+	AtBat            Hits         HmRun            Runs             RBI        
+	Min.   : 16.0   Min.   :  1   Min.   : 0.00   Min.   :  0.00   Min.   :  0.00  
+	1st Qu.:255.2   1st Qu.: 64   1st Qu.: 4.00   1st Qu.: 30.25   1st Qu.: 28.00  
+	Median :379.5   Median : 96   Median : 8.00   Median : 48.00   Median : 44.00  
+	Mean   :380.9   Mean   :101   Mean   :10.77   Mean   : 50.91   Mean   : 48.03  
+	3rd Qu.:512.0   3rd Qu.:137   3rd Qu.:16.00   3rd Qu.: 69.00   3rd Qu.: 64.75  
+	Max.   :687.0   Max.   :238   Max.   :40.00   Max.   :130.00   Max.   :121.00  
+	
+	Walks            Years            CAtBat            CHits            CHmRun      
+	Min.   :  0.00   Min.   : 1.000   Min.   :   19.0   Min.   :   4.0   Min.   :  0.00  
+	1st Qu.: 22.00   1st Qu.: 4.000   1st Qu.:  816.8   1st Qu.: 209.0   1st Qu.: 14.00  
+	Median : 35.00   Median : 6.000   Median : 1928.0   Median : 508.0   Median : 37.50  
+	Mean   : 38.74   Mean   : 7.444   Mean   : 2648.7   Mean   : 717.6   Mean   : 69.49  
+	3rd Qu.: 53.00   3rd Qu.:11.000   3rd Qu.: 3924.2   3rd Qu.:1059.2   3rd Qu.: 90.00  
+	Max.   :105.00   Max.   :24.000   Max.   :14053.0   Max.   :4256.0   Max.   :548.00  
+	
+	CRuns             CRBI             CWalks        League  Division
+	Min.   :   1.0   Min.   :   0.00   Min.   :   0.00   A:175   E:157   
+	1st Qu.: 100.2   1st Qu.:  88.75   1st Qu.:  67.25   N:147   W:165   
+	Median : 247.0   Median : 220.50   Median : 170.50                   
+	Mean   : 358.8   Mean   : 330.12   Mean   : 260.24                   
+	3rd Qu.: 526.2   3rd Qu.: 426.25   3rd Qu.: 339.25                   
+	Max.   :2165.0   Max.   :1659.00   Max.   :1566.00                   
+	
+	PutOuts          Assists          Errors          Salary       NewLeague
+	Min.   :   0.0   Min.   :  0.0   Min.   : 0.00   Min.   :  67.5   A:176    
+	1st Qu.: 109.2   1st Qu.:  7.0   1st Qu.: 3.00   1st Qu.: 190.0   N:146    
+	Median : 212.0   Median : 39.5   Median : 6.00   Median : 425.0            
+	Mean   : 288.9   Mean   :106.9   Mean   : 8.04   Mean   : 535.9            
+	3rd Qu.: 325.0   3rd Qu.:166.0   3rd Qu.:11.00   3rd Qu.: 750.0            
+	Max.   :1378.0   Max.   :492.0   Max.   :32.00   Max.   :2460.0            
+	NA's   :59                
+	\end{verbatim}
+\end{program}
+
+(a) Remove the observations for whom the salary information is unknown, and then log-transform the salaries.\\
+
+\begin{program}
+	\begin{verbatim}
+	> Hitters = na.omit(Hitters)
+	> Hitters$Salary = log(Hitters$Salary)
+	\end{verbatim}
+\end{program}
 
 
+\newpage
 
+(b) Create a training set consisting of the first 200 observations, and a test set consisting of the remaining observations. \\
 
+\begin{program}
+	\begin{verbatim}
+	> train = 1:200
+	>  Hitters.train = Hitters[train, ]
+	>  Hitters.test = Hitters[-train, ]
+	\end{verbatim}
+\end{program}
+
+(c) Perform boosting on the training set with 1,000 trees for a range of values of the shrinkage parameter λ. Produce a plot with different shrinkage values on the x-axis and the corresponding training set MSE on the y-axis. \\
+
+\begin{program}
+	\begin{verbatim}
+	> install.packages("gbm")
+	--- Please select a CRAN mirror for use in this session ---
+	trying URL 'https://cran.cnr.berkeley.edu/bin/macosx/mavericks/contrib/3.3/gbm_2.1.1.tgz'
+	Content type 'application/x-gzip' length 853908 bytes (833 KB)
+	==================================================
+	downloaded 833 KB
+	
+	
+	The downloaded binary packages are in
+	/var/folders/28/5cht8_x964n2w_4_wf_1tn3m0000gn/T//RtmpMqMQ7L/downloaded_packages
+	\end{verbatim}
+\end{program}
+
+\begin{program}
+	\begin{verbatim}
+	> library(gbm)
+	Loading required package: survival
+	Loading required package: lattice
+	Loading required package: splines
+	Loading required package: parallel
+	Loaded gbm 2.1.1
+	
+	> set.seed(1)
+	>  pows = seq(-10, -0.2, by = 0.1)
+	>  lambdas = 10^pows
+	>  length.lambdas = length(lambdas)
+	>  train.errors = rep(NA, length.lambdas)
+	>  test.errors = rep(NA, length.lambdas)
+	>  for (i in 1:length.lambdas) {
+	+      boost.hitters = gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian",
+	+          n.trees = 1000, shrinkage = lambdas[i])
+	+      train.pred = predict(boost.hitters, Hitters.train, n.trees = 1000)
+	+      test.pred = predict(boost.hitters, Hitters.test, n.trees = 1000)
+	+      train.errors[i] = mean((Hitters.train$Salary - train.pred)^2)
+	+      test.errors[i] = mean((Hitters.test$Salary - test.pred)^2)
+	+ }
+	>  plot(lambdas, train.errors, type = "b", xlab = "Shrinkage", ylab = "Train MSE",
+	+      col = "blue", pch = 20)
+	> dev.copy2pdf(file = "MTH522_hw7_p4c.pdf", width = 8, height = 6, out.type = "pdf")
+	> dev.off() 
+	\end{verbatim}
+\end{program}
 
 
 \begin{figure}[htb]
 	\begin{center}
-		\includegraphics[width=0.8\textwidth]{MTH522_hw7_p1_1.pdf}
+		\includegraphics[width=0.8\textwidth]{MTH522_hw7_p4c.pdf}
 	\end{center}
 	\caption{.}
-	\label{fig:MTH522_hw7_p1_1}
+	\label{fig:MTH522_hw7_p4c}
 \end{figure}
 
 \newpage
-deeneme
-\newpage
 
+
+(d) Produce a plot with different shrinkage values on the x-axis and the corresponding test set MSE on the y-axis. \\
 
 \begin{program}
 	\begin{verbatim}
-	
+	> plot(lambdas, test.errors, type = "b", xlab = "Shrinkage", ylab = "Test MSE")
+	> dev.copy2pdf(file = "MTH522_hw7_p4d.pdf", width = 8, height = 6, out.type = "pdf")
+	> dev.off()
 	\end{verbatim}
 \end{program}
 
 \begin{figure}[htb]
 	\begin{center}
-		\includegraphics[width=0.8\textwidth]{MTH522_hw7_p1_1.pdf}
+		\includegraphics[width=0.8\textwidth]{MTH522_hw7_p4d.pdf}
 	\end{center}
 	\caption{.}
-	\label{fig:MTH522_hw7_p1_1}
+	\label{fig:MTH522_hw7_p4d}
 \end{figure}
 
 \newpage
+
+\begin{program}
+	\begin{verbatim}
+	> min(test.errors)
+	[1] 0.008371305
+	> 
+	> lambdas[which.min(test.errors)]
+	[1] 0.07943282
+	\end{verbatim}
+\end{program}
+The minimum test MSE is 0.008371305, and is obtained for $\lambda$ = 0.07943282.\\
+
+
+(e) Compare the test MSE of boosting to the test MSE that results from applying two of the regression approaches seen in Chapters 3 and 6. \\
+
+\begin{program}
+	\begin{verbatim}
+	>   library(glmnet)
+	Loading required package: Matrix
+	Loading required package: foreach
+	foreach: simple, scalable parallel programming from Revolution Analytics
+	Use Revolution R for scalability, fault tolerance and more.
+	http://www.revolutionanalytics.com
+	Loaded glmnet 2.0-5
+	
+	
+	> lm.fit = lm(Salary ~ ., data = Hitters.train)
+	> lm.pred = predict(lm.fit, Hitters.test)
+	> mean((Hitters.test$Salary - lm.pred)^2)
+	[1] 0.01496996
+	
+	
+	> set.seed(1)
+	> x = model.matrix(Salary ~ ., data = Hitters.train)
+	> y = Hitters.train$Salary
+	> x.test = model.matrix(Salary ~ ., data = Hitters.test)
+	> lasso.fit = glmnet(x, y, alpha = 1)
+	> lasso.pred = predict(lasso.fit, s = 0.01, newx = x.test)
+	> mean((Hitters.test$Salary - lasso.pred)^2)
+	[1] 0.01377199
+	\end{verbatim}
+\end{program}
+
+The linear regression and ridge regression have higher test MSE than boostong.
+
+
+\newpage
+
+
+(f) Which variables appear to be the most important predictors in the boosted model? \\
+
+\begin{program}
+	\begin{verbatim}
+	> library(gbm)
+	> boost.best = gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian",
+	+     n.trees = 1000, shrinkage = lambdas[which.min(test.errors)])
+	> summary(boost.best)
+	var     rel.inf
+	CAtBat       CAtBat 16.39917007
+	CRBI           CRBI 12.00135571
+	CRuns         CRuns  9.66158055
+	PutOuts     PutOuts  7.82936035
+	CHits         CHits  7.69734758
+	Walks         Walks  6.90002087
+	Years         Years  5.49896314
+	CWalks       CWalks  5.48705226
+	RBI             RBI  5.07463775
+	AtBat         AtBat  4.22862860
+	Assists     Assists  3.86031219
+	CHmRun       CHmRun  3.67125349
+	HmRun         HmRun  2.93359813
+	Hits           Hits  2.81299263
+	Runs           Runs  2.47761436
+	Errors       Errors  2.21998496
+	NewLeague NewLeague  0.58142871
+	Division   Division  0.56870414
+	League       League  0.09599453
+
+	> dev.copy2pdf(file = "MTH522_hw7_p4f.pdf", width = 8, height = 4, out.type = "pdf")
+	> dev.off()
+		\end{verbatim}
+\end{program}
+
+“CAtBat”  and "CRBI" are two most important variables in that order.
+
+\begin{figure}[htb]
+	\begin{center}
+		\includegraphics[width=0.8\textwidth]{MTH522_hw7_p4f.pdf}
+	\end{center}
+	\caption{.}
+	\label{fig:MTH522_hw7_p4f}
+\end{figure}
+
+
+\newpage
+
+
+(g) Now apply bagging to the training set. What is the test set MSE for this approach? \\
+
+\begin{program}
+	\begin{verbatim}
+	> set.seed(1)
+	>  rf.hitters = randomForest(Salary ~ ., data = Hitters.train, ntree = 500, mtry = 19)
+	>  rf.pred = predict(rf.hitters, Hitters.test)
+	>  mean((Hitters.test$Salary - rf.pred)^2)
+	
+	[1] 0.007368052
+	\end{verbatim}
+\end{program}
+
+Test MSE for bagging is about 0.0074 , which is slightly lower than the best test MSE for boosting.
+
+
+\newpage
+{\bf Problem 5} (Chapter 8 Exercises 12):\\
+Apply boosting, bagging, and random forests to a data set of your choice. Be sure to fit the models on a training set and to evaluate their performance on a test set. How accurate are the results compared to simple methods like linear or logistic regression? Which of these approaches yields the best performance? \\
+\\
+
+I will use “Weekly” data set for this question.
+
+\begin{program}
+	\begin{verbatim}
+	> library(ISLR)
+	> set.seed(1)
+	> summary(Weekly)
+	
+	Year           Lag1               Lag2               Lag3         
+	Min.   :1990   Min.   :-18.1950   Min.   :-18.1950   Min.   :-18.1950  
+	1st Qu.:1995   1st Qu.: -1.1540   1st Qu.: -1.1540   1st Qu.: -1.1580  
+	Median :2000   Median :  0.2410   Median :  0.2410   Median :  0.2410  
+	Mean   :2000   Mean   :  0.1506   Mean   :  0.1511   Mean   :  0.1472  
+	3rd Qu.:2005   3rd Qu.:  1.4050   3rd Qu.:  1.4090   3rd Qu.:  1.4090  
+	Max.   :2010   Max.   : 12.0260   Max.   : 12.0260   Max.   : 12.0260  
+	Lag4               Lag5              Volume            Today          Direction 
+	Min.   :-18.1950   Min.   :-18.1950   Min.   :0.08747   Min.   :-18.1950   Down:484  
+	1st Qu.: -1.1580   1st Qu.: -1.1660   1st Qu.:0.33202   1st Qu.: -1.1540   Up  :605  
+	Median :  0.2380   Median :  0.2340   Median :1.00268   Median :  0.2410             
+	Mean   :  0.1458   Mean   :  0.1399   Mean   :1.57462   Mean   :  0.1499             
+	3rd Qu.:  1.4090   3rd Qu.:  1.4050   3rd Qu.:2.05373   3rd Qu.:  1.4050             
+	Max.   : 12.0260   Max.   : 12.0260   Max.   :9.32821   Max.   : 12.0260             
+	\end{verbatim}
+\end{program}
+
+
+\begin{program}
+	\begin{verbatim}
+	> train = sample(nrow(Weekly), nrow(Weekly)/2)
+	> test = -train
+	\end{verbatim}
+\end{program}
+
+LOGISTIC REGRESSION
+
+\begin{program}
+	\begin{verbatim}
+	> glm.fit = glm(Direction ~ . - Year - Today, data = Weekly[train, ],
+	+ family = "binomial")
+	> glm.probs = predict(glm.fit, newdata = Weekly[test, ], type =
+	+ "response")
+	> glm.pred = rep("Down", length(glm.probs))
+	> glm.pred[glm.probs > 0.5] = "Up"
+	> table(glm.pred, Weekly$Direction[test])
+	
+	glm.pred Down  Up
+	Down   28  32
+	Up    225 260
+
+
+	> 1 - (28+260) / (28+32+225+260)
+	[1] 0.4715596
+	\end{verbatim}
+\end{program}
+
+Error : 0.4715596
+
+\newpage
+
+BOOSTING
+
+
+\begin{program}
+	\begin{verbatim}
+	> library(gbm)
+	> Weekly$BinomialDirection = ifelse(Weekly$Direction == "Up", 1, 0)
+	> boost.weekly = gbm(BinomialDirection ~ . - Year - Today - Direction,
+	+ data = Weekly[train,
+	+     ], distribution = "bernoulli", n.trees = 5000)
+	> yhat.boost = predict(boost.weekly, newdata = Weekly[test, ], n.trees
+	+ = 5000)
+	> yhat.pred = rep(0, length(yhat.boost))
+	> yhat.pred[yhat.boost > 0.5] = 1
+	> table(yhat.pred, Weekly$BinomialDirection[test])
+	
+	yhat.pred   0   1
+	0 204 221
+	1  49  71
+
+
+	> 1 - (204+71) / (204+221+49+71)
+	[1] 0.4954128
+	\end{verbatim}
+\end{program}
+
+Error : 0.4954128 \\
+
+BAGGING
+
+\begin{program}
+	\begin{verbatim}
+	> Weekly = Weekly[, !(names(Weekly) %in% c("BinomialDirection"))]
+	> library(randomForest)
+	> bag.weekly = randomForest(Direction ~ . - Year - Today, data =
+	+ Weekly, subset = train,
+	+     mtry = 6)
+	> yhat.bag = predict(bag.weekly, newdata = Weekly[test, ])
+	> table(yhat.bag, Weekly$Direction[test])
+	
+	yhat.bag Down  Up
+	Down   82  81
+	Up    171 211
+
+
+	> 1 - (82+211)/(82+81+171+211)
+	[1] 0.4623853
+	\end{verbatim}
+\end{program}
+
+Error : 0.4623853 \\
+
+\newpage
+
+RANDOM FORESTS
+
+\begin{program}
+	\begin{verbatim}
+	> rf.weekly = randomForest(Direction ~ . - Year - Today, data =
+	+ Weekly, subset = train,
+	+     mtry = 2)
+	> yhat.bag = predict(rf.weekly, newdata = Weekly[test, ])
+	> table(yhat.bag, Weekly$Direction[test])
+	
+	yhat.bag Down  Up
+	Down   68  73
+	Up    185 219
+
+
+
+	> 1 - (68+219)/(68+73+185+219)
+	[1] 0.4733945
+	\end{verbatim}
+\end{program}
+
+Error : 0.4733945 \\
+
+BAGGING gave th lowest validation set test error rate.
 
 
 
